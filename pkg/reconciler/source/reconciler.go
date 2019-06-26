@@ -16,12 +16,18 @@ package source
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/GoogleCloudPlatform/kf/pkg/apis/kf/v1alpha1"
 	kflisters "github.com/GoogleCloudPlatform/kf/pkg/client/listers/kf/v1alpha1"
-
 	"github.com/GoogleCloudPlatform/kf/pkg/reconciler"
+	"github.com/knative/pkg/logging"
+	"go.uber.org/zap"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/knative/pkg/controller"
+	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/client-go/tools/cache"
 )
 
 // Reconciler reconciles an source object with the K8s cluster.
@@ -37,11 +43,67 @@ var _ controller.Reconciler = (*Reconciler)(nil)
 
 // Reconcile is called by Kubernetes.
 func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
+	logger := logging.FromContext(ctx)
+
+	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		return err
+	}
+
+	original, err := r.SourceLister.Sources(namespace).Get(name)
+	switch {
+	case apierrs.IsNotFound(err):
+		logger.Errorf("source %q no longer exists\n", name)
+		return nil
+
+	case err != nil:
+		return err
+
+	case original.GetDeletionTimestamp() != nil:
+		return nil
+	}
+
+	// Don't modify the informers copy
+	toReconcile := original.DeepCopy()
+
+	// Reconcile this copy of the service and then write back any status
+	// updates regardless of whether the reconciliation errored out.
+	reconcileErr := r.ApplyChanges(ctx, toReconcile)
+	if equality.Semantic.DeepEqual(original.Status, toReconcile.Status) {
+		// If we didn't change anything then don't call updateStatus.
+		// This is important because the copy we loaded from the informer's
+		// cache may be stale and we don't want to overwrite a prior update
+		// to status with this stale state.
+
+	} else if _, uErr := r.updateStatus(namespace, toReconcile); uErr != nil {
+		logger.Warnw("Failed to update Source status", zap.Error(uErr))
+		return uErr
+	}
+
+	return reconcileErr
+}
+
+// ApplyChanges updates the linked resources in the cluster with the current
+// status of the source.
+func (r *Reconciler) ApplyChanges(ctx context.Context, source *v1alpha1.Source) error {
+	// logger := logging.FromContext(ctx)
 	return nil
 }
 
-// sourcelyChanges updates the linked resources in the cluster with the current
-// status of the space.
-func (r *Reconciler) sourcelyChanges(ctx context.Context, space *v1alpha1.Space) error {
-	return nil
+func (r *Reconciler) updateStatus(namespace string, desired *v1alpha1.Source) (*v1alpha1.Source, error) {
+	actual, err := r.SourceLister.Sources(namespace).Get(desired.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	// If there's nothing to update, just return.
+	if reflect.DeepEqual(actual.Status, desired.Status) {
+		return actual, nil
+	}
+
+	// Don't modify the informers copy.
+	existing := actual.DeepCopy()
+	existing.Status = desired.Status
+
+	return r.KfClientSet.KfV1alpha1().Sources(namespace).UpdateStatus(existing)
 }

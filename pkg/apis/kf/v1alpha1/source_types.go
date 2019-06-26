@@ -39,7 +39,8 @@ type SourceSpec struct {
 
 	// UpdateRequests is a unique identifier for an AppSpecSource.
 	// Updating sub-values will trigger a new value.
-	UpdateRequests int `json:"updateRequests"`
+	// +optional
+	UpdateRequests int `json:"updateRequests,omitempty"`
 
 	// ContainerImage defines the container image for source.
 	// +optional
@@ -61,8 +62,7 @@ type AppSpecSourceContainerImage struct {
 type AppSpecSourceBuildpackBuild struct {
 
 	// Source is the Container Image which contains the App's source code.
-	// +optional
-	Source string `json:"source,omitempty"`
+	Source string `json:"source"`
 
 	// Stack is the base layer to use for the App.
 	// +optional
@@ -71,6 +71,9 @@ type AppSpecSourceBuildpackBuild struct {
 	// Buildpack is the Buildpack to use for the App.
 	// +optional
 	Buildpack string `json:"buildpack,omitempty"`
+
+	// BuildpackBuilder is the container image which builds the App.
+	BuildpackBuilder string `json:"buildpackBuilder"`
 }
 
 // SourceStatus is the current configuration and running state for an App's Source.

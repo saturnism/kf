@@ -16,11 +16,15 @@ package main
 
 import (
 	"github.com/GoogleCloudPlatform/kf/pkg/reconciler/space"
+	"github.com/GoogleCloudPlatform/kf/pkg/reconciler/source"
+	"github.com/GoogleCloudPlatform/kf/pkg/reconciler/app"
 	"github.com/knative/pkg/injection/sharedmain"
 )
 
 func main() {
 	sharedmain.Main("controller",
 		// Append all controllers here
-		space.NewController)
+		space.NewController,
+		app.NewController,
+		source.NewController)
 }
