@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package app
+package source
 
 import (
 	"context"
@@ -24,12 +24,12 @@ import (
 	"github.com/knative/pkg/controller"
 )
 
-// Reconciler reconciles an App object with the K8s cluster.
+// Reconciler reconciles an source object with the K8s cluster.
 type Reconciler struct {
 	*reconciler.Base
 
 	// listers index properties about resources
-	appLister kflisters.AppLister
+	SourceLister kflisters.SourceLister
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -40,8 +40,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return nil
 }
 
-// ApplyChanges updates the linked resources in the cluster with the current
+// sourcelyChanges updates the linked resources in the cluster with the current
 // status of the space.
-func (r *Reconciler) ApplyChanges(ctx context.Context, space *v1alpha1.Space) error {
+func (r *Reconciler) sourcelyChanges(ctx context.Context, space *v1alpha1.Space) error {
 	return nil
 }

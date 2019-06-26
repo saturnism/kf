@@ -12,37 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package app
+package source
 
 import (
 	"context"
 
-	appinformer "github.com/GoogleCloudPlatform/kf/pkg/client/injection/informers/kf/v1alpha1/app"
+	sourceinformer "github.com/GoogleCloudPlatform/kf/pkg/client/injection/informers/kf/v1alpha1/source"
 	"github.com/GoogleCloudPlatform/kf/pkg/reconciler"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/logging"
 )
 
-// NewController creates a new controller capable of reconciling Kf Apps.
+// NewController creates a new controller capable of reconciling Kf sources.
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	logger := logging.FromContext(ctx)
 
 	// Get informers off context
-	appInformer := appinformer.Get(ctx)
+	sourceInformer := sourceinformer.Get(ctx)
 
 	// Create reconciler
 	c := &Reconciler{
-		Base:      reconciler.NewBase(ctx, "app-controller", cmw),
-		appLister: appInformer.Lister(),
+		Base:         reconciler.NewBase(ctx, "source-controller", cmw),
+		SourceLister: sourceInformer.Lister(),
 	}
 
-	impl := controller.NewImpl(c, logger, "Apps")
+	impl := controller.NewImpl(c, logger, "sources")
 
 	c.Logger.Info("Setting up event handlers")
 
 	// Watch for changes in sub-resources so we can sync accordingly
-	appInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+	sourceInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 	return impl
 }

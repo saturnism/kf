@@ -13,5 +13,5 @@
 // limitations under the License.
 
 // Package resources holds simple functions for synthesizing child resources
-// from an App.
+// from a Source.
 package resources
