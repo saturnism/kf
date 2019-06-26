@@ -15,5 +15,6 @@
 # limitations under the License.
 
 set -x
-rm -f kf
-go build ./cmd/kf/...
+mkdir -p bin
+rm -f bin/*
+go build -o bin/kf ./cmd/kf/...
