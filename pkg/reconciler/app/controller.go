@@ -17,8 +17,8 @@ package app
 import (
 	"context"
 
-	appinformer "github.com/GoogleCloudPlatform/kf/pkg/client/injection/informers/kf/v1alpha1/app"
-	"github.com/GoogleCloudPlatform/kf/pkg/reconciler"
+	appinformer "github.com/google/kf/pkg/client/injection/informers/kf/v1alpha1/app"
+	"github.com/google/kf/pkg/reconciler"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/logging"

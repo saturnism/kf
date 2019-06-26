@@ -18,9 +18,9 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/GoogleCloudPlatform/kf/pkg/apis/kf/v1alpha1"
-	kflisters "github.com/GoogleCloudPlatform/kf/pkg/client/listers/kf/v1alpha1"
-	"github.com/GoogleCloudPlatform/kf/pkg/reconciler"
+	"github.com/google/kf/pkg/apis/kf/v1alpha1"
+	kflisters "github.com/google/kf/pkg/client/listers/kf/v1alpha1"
+	"github.com/google/kf/pkg/reconciler"
 	"github.com/knative/pkg/logging"
 	"go.uber.org/zap"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"

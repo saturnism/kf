@@ -17,10 +17,10 @@ package app
 import (
 	"context"
 
-	"github.com/GoogleCloudPlatform/kf/pkg/apis/kf/v1alpha1"
-	kflisters "github.com/GoogleCloudPlatform/kf/pkg/client/listers/kf/v1alpha1"
+	"github.com/google/kf/pkg/apis/kf/v1alpha1"
+	kflisters "github.com/google/kf/pkg/client/listers/kf/v1alpha1"
 
-	"github.com/GoogleCloudPlatform/kf/pkg/reconciler"
+	"github.com/google/kf/pkg/reconciler"
 	"github.com/knative/pkg/controller"
 )
 

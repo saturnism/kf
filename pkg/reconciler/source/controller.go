@@ -17,8 +17,8 @@ package source
 import (
 	"context"
 
-	sourceinformer "github.com/GoogleCloudPlatform/kf/pkg/client/injection/informers/kf/v1alpha1/source"
-	"github.com/GoogleCloudPlatform/kf/pkg/reconciler"
+	sourceinformer "github.com/google/kf/pkg/client/injection/informers/kf/v1alpha1/source"
+	"github.com/google/kf/pkg/reconciler"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/logging"

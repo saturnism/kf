@@ -19,8 +19,8 @@ package fake
 import (
 	"context"
 
-	fake "github.com/GoogleCloudPlatform/kf/pkg/client/injection/informers/kf/factory/fake"
-	app "github.com/GoogleCloudPlatform/kf/pkg/client/injection/informers/kf/v1alpha1/app"
+	fake "github.com/google/kf/pkg/client/injection/informers/kf/factory/fake"
+	app "github.com/google/kf/pkg/client/injection/informers/kf/v1alpha1/app"
 	controller "github.com/knative/pkg/controller"
 	injection "github.com/knative/pkg/injection"
 )
