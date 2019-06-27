@@ -1,3 +1,5 @@
+#!/usr/bin/env sh
+
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the License);
@@ -12,24 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  name: sources.kf.dev
-spec:
-  group: kf.dev
-  version: v1alpha1
-  names:
-    kind: Source
-    plural: sources
-    singular: source
-    categories:
-    - all
-    - kf
-  scope: Namespaced
-  subresources:
-    status: {}
-  additionalPrinterColumns:
-  - name: Age
-    type: date
-    JSONPath: .metadata.creationTimestamp
+set -x
+ko apply -f config
