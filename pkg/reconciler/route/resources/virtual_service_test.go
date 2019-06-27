@@ -17,13 +17,19 @@ package resources_test
 import (
 	"math/rand"
 	"net/http"
+	"net/url"
 	"regexp"
 	"testing"
 
 	"github.com/google/kf/pkg/apis/kf/v1alpha1"
 	"github.com/google/kf/pkg/kf/testutil"
 	"github.com/google/kf/pkg/reconciler/route/resources"
+	"github.com/knative/pkg/apis"
+	servingv1alpha1 "github.com/knative/serving/pkg/apis/serving/v1alpha1"
+	"github.com/knative/serving/pkg/client/clientset/versioned/typed/serving/v1alpha1/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	ktesting "k8s.io/client-go/testing"
 	istio "knative.dev/pkg/apis/istio/common/v1alpha1"
 	networking "knative.dev/pkg/apis/istio/v1alpha3"
 	"knative.dev/pkg/kmeta"
@@ -82,6 +88,7 @@ func TestMakeVirtualService(t *testing.T) {
 
 	for tn, tc := range map[string]struct {
 		Route  *v1alpha1.Route
+		Setup  func(t *testing.T, fake *fake.FakeServingV1alpha1)
 		Assert func(t *testing.T, v *networking.VirtualService, err error)
 	}{
 		"proper Meta": {
@@ -168,7 +175,7 @@ func TestMakeVirtualService(t *testing.T) {
 				}, v.Spec.HTTP[0].Route[0])
 			},
 		},
-		"Setup fault to 503": {
+		"when there aren't any bound services, setup fault to 503": {
 			Route: &v1alpha1.Route{
 				Spec: v1alpha1.RouteSpec{
 					Hostname: "some-host",
@@ -185,6 +192,49 @@ func TestMakeVirtualService(t *testing.T) {
 						HTTPStatus: http.StatusServiceUnavailable,
 					},
 				}, v.Spec.HTTP[0].Fault)
+			},
+		},
+		"setup routes to bound services": {
+			Route: &v1alpha1.Route{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "some-namespace",
+				},
+				Spec: v1alpha1.RouteSpec{
+					Hostname:            "some-host",
+					Domain:              "example.com",
+					Path:                "/some-path",
+					KnativeServiceNames: []string{"ksvc-1"},
+				},
+			},
+			Setup: func(t *testing.T, fake *fake.FakeServingV1alpha1) {
+				u, err := url.Parse("http://some-url.com")
+				testutil.AssertNil(t, "url err", err)
+
+				fake.AddReactor("*", "*", ktesting.ReactionFunc(func(action ktesting.Action) (bool, runtime.Object, error) {
+					testutil.AssertEqual(t, "namespace", "some-namespace", action.GetNamespace())
+
+					return true, &servingv1alpha1.Service{
+						Status: servingv1alpha1.ServiceStatus{
+							RouteStatusFields: servingv1alpha1.RouteStatusFields{
+								URL: (*apis.URL)(u),
+							},
+						},
+					}, nil
+				}))
+			},
+			Assert: func(t *testing.T, v *networking.VirtualService, err error) {
+				testutil.AssertNil(t, "err", err)
+				testutil.AssertEqual(t, "HTTP len", 1, len(v.Spec.HTTP))
+				testutil.AssertNil(t, "HTTP Fault", v.Spec.HTTP[0].Fault)
+				testutil.AssertEqual(t, "HTTP Rewrite", &networking.HTTPRewrite{
+					Authority: "http://some-url.com/some-path",
+				}, v.Spec.HTTP[0].Rewrite)
+				testutil.AssertEqual(t, "HTTP Match len", 1, v.Spec.HTTP[0].Match)
+				testutil.AssertEqual(t, "HTTP Match", &networking.HTTPMatchRequest{
+					URI: &istio.StringMatch{
+						Prefix: "/some-path",
+					},
+				}, v.Spec.HTTP[0].Match)
 			},
 		},
 		"Hosts with subdomain": {
@@ -217,7 +267,20 @@ func TestMakeVirtualService(t *testing.T) {
 		},
 	} {
 		t.Run(tn, func(t *testing.T) {
-			s, err := resources.MakeVirtualService(tc.Route)
+			if tc.Setup == nil {
+				tc.Setup = func(t *testing.T, fake *fake.FakeServingV1alpha1) {
+					fake.AddReactor("*", "*", ktesting.ReactionFunc(func(action ktesting.Action) (bool, runtime.Object, error) {
+						return false, nil, nil
+					}))
+				}
+			}
+
+			fake := &fake.FakeServingV1alpha1{
+				Fake: &ktesting.Fake{},
+			}
+			tc.Setup(t, fake)
+
+			s, err := resources.MakeVirtualService(tc.Route, fake)
 			tc.Assert(t, s, err)
 		})
 	}

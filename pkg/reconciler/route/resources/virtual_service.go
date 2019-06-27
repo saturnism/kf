@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/google/kf/pkg/apis/kf/v1alpha1"
+	servingv1alpha1 "github.com/knative/serving/pkg/client/clientset/versioned/typed/serving/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	istio "knative.dev/pkg/apis/istio/common/v1alpha1"
 	networking "knative.dev/pkg/apis/istio/v1alpha3"
@@ -45,7 +46,10 @@ func VirtualServiceName(hostname, domain, urlPath string) string {
 }
 
 // MakeVirtualService creates a VirtualService from a Route object.
-func MakeVirtualService(route *v1alpha1.Route) (*networking.VirtualService, error) {
+func MakeVirtualService(
+	route *v1alpha1.Route,
+	c servingv1alpha1.ServingV1alpha1Interface,
+) (*networking.VirtualService, error) {
 	hostDomain := route.Spec.Domain
 	if route.Spec.Hostname != "" {
 		hostDomain = route.Spec.Hostname + "." + route.Spec.Domain
@@ -60,6 +64,42 @@ func MakeVirtualService(route *v1alpha1.Route) (*networking.VirtualService, erro
 				Prefix: urlPath,
 			},
 		})
+	}
+
+	var (
+		httpRoutes []networking.HTTPRouteDestination
+		httpFault  *networking.HTTPFaultInjection
+	)
+
+	for _, ksvcName := range route.Spec.KnativeServiceNames {
+		c.Services(route.GetNamespace()).Get("", metav1.GetOptions{})
+		// ksvc :=
+	}
+
+	// If there aren't any bound services, then we'll just serve a Fault.
+	if len(httpRoutes) == 0 {
+		httpRoutes = append(httpRoutes, networking.HTTPRouteDestination{
+			Destination: networking.Destination{
+				Host: GatewayHost,
+
+				// XXX: If this is not included, then
+				// we get an error back from the
+				// server suggesting we have to have a
+				// port set. It doesn't seem to hurt
+				// anything as we just return a fault.
+				Port: networking.PortSelector{
+					Number: 80,
+				},
+			},
+			Weight: 100,
+		})
+
+		httpFault = &networking.HTTPFaultInjection{
+			Abort: &networking.InjectAbort{
+				Percent:    100,
+				HTTPStatus: http.StatusServiceUnavailable,
+			},
+		}
 	}
 
 	return &networking.VirtualService{
@@ -86,29 +126,8 @@ func MakeVirtualService(route *v1alpha1.Route) (*networking.VirtualService, erro
 			HTTP: []networking.HTTPRoute{
 				{
 					Match: pathMatchers,
-					Route: []networking.HTTPRouteDestination{
-						{
-							Destination: networking.Destination{
-								Host: GatewayHost,
-
-								// XXX: If this is not included, then
-								// we get an error back from the
-								// server suggesting we have to have a
-								// port set. It doesn't seem to hurt
-								// anything as we just return a fault.
-								Port: networking.PortSelector{
-									Number: 80,
-								},
-							},
-							Weight: 100,
-						},
-					},
-					Fault: &networking.HTTPFaultInjection{
-						Abort: &networking.InjectAbort{
-							Percent:    100,
-							HTTPStatus: http.StatusServiceUnavailable,
-						},
-					},
+					Route: httpRoutes,
+					Fault: httpFault,
 				},
 			},
 		},
