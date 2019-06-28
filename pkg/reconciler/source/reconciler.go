@@ -17,25 +17,33 @@ package source
 import (
 	"context"
 	"reflect"
+  "fmt"
 
 	"github.com/google/kf/pkg/apis/kf/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kflisters "github.com/google/kf/pkg/client/listers/kf/v1alpha1"
 	"github.com/google/kf/pkg/reconciler"
 	"go.uber.org/zap"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/logging"
-
+	build "github.com/knative/build/pkg/apis/build/v1alpha1"
+	"github.com/google/kf/pkg/reconciler/source/resources"
+  buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/controller"
+  cbuild "github.com/knative/build/pkg/client/clientset/versioned/typed/build/v1alpha1"
 )
 
 // Reconciler reconciles an source object with the K8s cluster.
 type Reconciler struct {
 	*reconciler.Base
 
+  buildClient cbuild.BuildInterface
+
 	// listers index properties about resources
 	SourceLister kflisters.SourceLister
+  buildLister buildlisters.BuildLister
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -52,7 +60,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	original, err := r.SourceLister.Sources(namespace).Get(name)
 	switch {
-	case apierrs.IsNotFound(err):
+	case errors.IsNotFound(err):
 		logger.Errorf("source %q no longer exists\n", name)
 		return nil
 
@@ -86,8 +94,48 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 // ApplyChanges updates the linked resources in the cluster with the current
 // status of the source.
 func (r *Reconciler) ApplyChanges(ctx context.Context, source *v1alpha1.Source) error {
-	// logger := logging.FromContext(ctx)
+	// Sync build
+	{
+		desired, err := resources.MakeBuild(source)
+		if err != nil {
+			return err
+		}
+
+		actual, err := r.buildLister.Builds(desired.Namespace).Get(desired.Name)
+		if errors.IsNotFound(err) {
+      actual, err = r.buildClient.Update(desired)
+			if err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		} else if !metav1.IsControlledBy(actual, source) {
+			source.Status.MarkBuildNotOwned(desired.Name)
+			return fmt.Errorf("source: %q does not own build: %q", source.Name, desired.Name)
+		} else if actual, err = r.reconcileBuild(desired, actual); err != nil {
+			return err
+		}
+
+		source.Status.PropagateBuildStatus(actual)
+	}
+
 	return nil
+}
+
+func (r *Reconciler) reconcileBuild(desired, actual *build.Build) (*build.Build, error) {
+	// Check for differences, if none we don't need to reconcile.
+	semanticEqual := equality.Semantic.DeepEqual(desired.ObjectMeta.Labels, actual.ObjectMeta.Labels)
+
+	if semanticEqual {
+		return actual, nil
+	}
+
+	// Don't modify the informers copy.
+	existing := actual.DeepCopy()
+
+	// Preserve the rest of the object (e.g. ObjectMeta except for labels).
+	existing.ObjectMeta.Labels = desired.ObjectMeta.Labels
+	return r.buildClient.Update(existing)
 }
 
 func (r *Reconciler) updateStatus(namespace string, desired *v1alpha1.Source) (*v1alpha1.Source, error) {

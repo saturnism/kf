@@ -19,8 +19,8 @@ import (
 
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	"github.com/knative/pkg/apis"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 )
 
 // GetGroupVersionKind returns the GroupVersionKind.
@@ -66,9 +66,19 @@ func (status *SourceStatus) MarkBuildNotOwned(name string) {
 // PropagateBuildStatus copies fields from the Build status to Space
 // and updates the readiness based on the current phase.
 func (status *SourceStatus) PropagateBuildStatus(build *v1alpha1.Build) {
-	// for _, condition := range build.Status.GetConditions() {
-	// 	status.manage().SetCondition(condition)
-	// }
+	for _, condition := range build.Status.GetConditions() {
+
+    c := apis.Condition{
+      Type: apis.ConditionType(string(condition.Type)),
+      Status: condition.Status,
+      Severity: apis.ConditionSeverity(string(condition.Severity)),
+      LastTransitionTime: condition.LastTransitionTime,
+      Reason: condition.Reason,
+      Message: condition.Message,
+    }
+
+		status.manage().SetCondition(c)
+	}
 }
 
 func (status *SourceStatus) duck() *duckv1beta1.Status {
