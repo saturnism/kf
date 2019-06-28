@@ -21,13 +21,13 @@ import (
 	"github.com/google/kf/pkg/apis/kf/v1alpha1"
 	kflisters "github.com/google/kf/pkg/client/listers/kf/v1alpha1"
 	"github.com/google/kf/pkg/reconciler"
-	"knative.dev/pkg/logging"
 	"go.uber.org/zap"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"knative.dev/pkg/logging"
 
-	"knative.dev/pkg/controller"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/client-go/tools/cache"
+	"knative.dev/pkg/controller"
 )
 
 // Reconciler reconciles an source object with the K8s cluster.
