@@ -15,9 +15,10 @@
 package main
 
 import (
-	"github.com/google/kf/pkg/reconciler/space"
-	"github.com/google/kf/pkg/reconciler/source"
 	"github.com/google/kf/pkg/reconciler/app"
+	"github.com/google/kf/pkg/reconciler/route"
+	"github.com/google/kf/pkg/reconciler/source"
+	"github.com/google/kf/pkg/reconciler/space"
 	"knative.dev/pkg/injection/sharedmain"
 )
 
@@ -26,5 +27,7 @@ func main() {
 		// Append all controllers here
 		space.NewController,
 		app.NewController,
-		source.NewController)
+		source.NewController,
+		route.NewController,
+	)
 }
