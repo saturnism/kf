@@ -18,9 +18,9 @@ import (
 	"fmt"
 
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"github.com/knative/pkg/apis"
 	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // GetGroupVersionKind returns the GroupVersionKind.
@@ -68,14 +68,14 @@ func (status *SourceStatus) MarkBuildNotOwned(name string) {
 func (status *SourceStatus) PropagateBuildStatus(build *v1alpha1.Build) {
 	for _, condition := range build.Status.GetConditions() {
 
-    c := apis.Condition{
-      Type: apis.ConditionType(string(condition.Type)),
-      Status: condition.Status,
-      Severity: apis.ConditionSeverity(string(condition.Severity)),
-      LastTransitionTime: condition.LastTransitionTime,
-      Reason: condition.Reason,
-      Message: condition.Message,
-    }
+		c := apis.Condition{
+			Type:               apis.ConditionType(string(condition.Type)),
+			Status:             condition.Status,
+			Severity:           apis.ConditionSeverity(string(condition.Severity)),
+			LastTransitionTime: condition.LastTransitionTime,
+			Reason:             condition.Reason,
+			Message:            condition.Message,
+		}
 
 		status.manage().SetCondition(c)
 	}

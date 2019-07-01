@@ -65,7 +65,11 @@ func NewPushCommand(p *config.KfParams, pusher kf.Pusher, b SrcImageBuilder) *co
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if containerRegistry == "" {
-				return errors.New("container-registry is required")
+				if p.ContainerRegistry != "" {
+					containerRegistry = p.ContainerRegistry
+				} else {
+					return errors.New("container-registry is required")
+				}
 			}
 			cmd.SilenceUsage = true
 

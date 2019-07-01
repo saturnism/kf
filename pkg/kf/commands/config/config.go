@@ -50,6 +50,9 @@ type KfParams struct {
 
 	// KubeCfgFile holds the path to the kubeconfig.
 	KubeCfgFile string `yaml:"kubeconfig"`
+
+	// ContainerRegistry is the registry used to push source images.
+	ContainerRegistry string `yaml:"containerRegistry"`
 }
 
 // paramsPath gets the path we should read the config from/write it to.

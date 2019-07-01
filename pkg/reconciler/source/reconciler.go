@@ -16,34 +16,34 @@ package source
 
 import (
 	"context"
+	"fmt"
 	"reflect"
-  "fmt"
 
 	"github.com/google/kf/pkg/apis/kf/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kflisters "github.com/google/kf/pkg/client/listers/kf/v1alpha1"
 	"github.com/google/kf/pkg/reconciler"
-	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"knative.dev/pkg/logging"
-	build "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/google/kf/pkg/reconciler/source/resources"
-  buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
+	build "github.com/knative/build/pkg/apis/build/v1alpha1"
+	cbuild "github.com/knative/build/pkg/client/clientset/versioned/typed/build/v1alpha1"
+	buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/controller"
-  cbuild "github.com/knative/build/pkg/client/clientset/versioned/typed/build/v1alpha1"
+	"knative.dev/pkg/logging"
 )
 
 // Reconciler reconciles an source object with the K8s cluster.
 type Reconciler struct {
 	*reconciler.Base
 
-  buildClient cbuild.BuildInterface
+	buildClient cbuild.BuildInterface
 
 	// listers index properties about resources
 	SourceLister kflisters.SourceLister
-  buildLister buildlisters.BuildLister
+	buildLister  buildlisters.BuildLister
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -103,7 +103,7 @@ func (r *Reconciler) ApplyChanges(ctx context.Context, source *v1alpha1.Source) 
 
 		actual, err := r.buildLister.Builds(desired.Namespace).Get(desired.Name)
 		if errors.IsNotFound(err) {
-      actual, err = r.buildClient.Update(desired)
+			actual, err = r.buildClient.Update(desired)
 			if err != nil {
 				return err
 			}
