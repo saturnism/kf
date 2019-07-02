@@ -33,3 +33,15 @@ spec:
   - name: Age
     type: date
     JSONPath: .metadata.creationTimestamp
+  - name: Succeeded
+    type: string
+    JSONPath: .status.conditions[?(@.type=="Succeeded")].status
+  - name: Reason
+    type: string
+    JSONPath: .status.conditions[?(@.type=="Succeeded")].reason
+  - name: StartTime
+    type: date
+    JSONPath: .status.startTime
+  - name: CompletionTime
+    type: date
+    JSONPath: .status.completionTime
