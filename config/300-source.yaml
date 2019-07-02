@@ -36,12 +36,6 @@ spec:
   - name: Succeeded
     type: string
     JSONPath: .status.conditions[?(@.type=="Succeeded")].status
-  - name: Reason
+  - name: Image
     type: string
-    JSONPath: .status.conditions[?(@.type=="Succeeded")].reason
-  - name: StartTime
-    type: date
-    JSONPath: .status.startTime
-  - name: CompletionTime
-    type: date
-    JSONPath: .status.completionTime
+    JSONPath: .status.image

@@ -16,8 +16,8 @@ package source
 
 import (
 	"context"
-	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/google/kf/pkg/apis/kf/v1alpha1"
 	kflisters "github.com/google/kf/pkg/client/listers/kf/v1alpha1"
@@ -29,7 +29,8 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -39,7 +40,7 @@ import (
 type Reconciler struct {
 	*reconciler.Base
 
-	buildClient cbuild.BuildInterface
+	buildClient cbuild.BuildV1alpha1Interface
 
 	// listers index properties about resources
 	SourceLister kflisters.SourceLister
@@ -101,18 +102,33 @@ func (r *Reconciler) ApplyChanges(ctx context.Context, source *v1alpha1.Source) 
 			return err
 		}
 
-		actual, err := r.buildLister.Builds(desired.Namespace).Get(desired.Name)
-		if errors.IsNotFound(err) {
-			actual, err = r.buildClient.Update(desired)
+		selec := labels.NewSelector()
+		rec, err := labels.NewRequirement("kf-source", selection.Equals, []string{source.Name})
+		if err != nil {
+			return err
+		}
+
+		selec = selec.Add(*rec)
+		actualList, err := r.buildLister.Builds(desired.Namespace).List(selec)
+		if err != nil {
+			return err
+		}
+
+		var actual *build.Build
+		if len(actualList) > 0 {
+			// Builds are not always listed in their creation order.
+			sort.Slice(actualList, func(i, j int) bool {
+				return actualList[i].Name < actualList[j].Name
+			})
+			actual = actualList[len(actualList)-1]
+		}
+
+		if actual == nil {
+			actual, err = r.buildClient.Builds(desired.Namespace).Create(desired)
 			if err != nil {
 				return err
 			}
-		} else if err != nil {
-			return err
-		} else if !metav1.IsControlledBy(actual, source) {
-			source.Status.MarkBuildNotOwned(desired.Name)
-			return fmt.Errorf("source: %q does not own build: %q", source.Name, desired.Name)
-		} else if actual, err = r.reconcileBuild(desired, actual); err != nil {
+		} else if actual, err = r.reconcileBuild(ctx, desired, actual); err != nil {
 			return err
 		}
 
@@ -122,20 +138,38 @@ func (r *Reconciler) ApplyChanges(ctx context.Context, source *v1alpha1.Source) 
 	return nil
 }
 
-func (r *Reconciler) reconcileBuild(desired, actual *build.Build) (*build.Build, error) {
+func (r *Reconciler) reconcileBuild(ctx context.Context, desired, actual *build.Build) (*build.Build, error) {
 	// Check for differences, if none we don't need to reconcile.
 	semanticEqual := equality.Semantic.DeepEqual(desired.ObjectMeta.Labels, actual.ObjectMeta.Labels)
+
+	existing := actual.DeepCopy()
+
+	desiredName := desired.Name
+	existingName := existing.Name
+
+	desiredArgs := desired.Spec.Template.Arguments
+	desired.Spec.Template.Arguments = desiredArgs[1:]
+
+	existingArgs := existing.Spec.Template.Arguments
+	existing.Spec.Template.Arguments = existingArgs[1:]
+
+	desired.Name = ""
+	existing.Name = ""
+
+	semanticEqual = semanticEqual && equality.Semantic.DeepEqual(desired.Spec.Source, existing.Spec.Source)
+	semanticEqual = semanticEqual && equality.Semantic.DeepEqual(desired.Spec.Template, existing.Spec.Template)
+
+	desired.Name = desiredName
+	existing.Name = existingName
+
+	desired.Spec.Template.Arguments = desiredArgs
+	existing.Spec.Template.Arguments = existingArgs
 
 	if semanticEqual {
 		return actual, nil
 	}
 
-	// Don't modify the informers copy.
-	existing := actual.DeepCopy()
-
-	// Preserve the rest of the object (e.g. ObjectMeta except for labels).
-	existing.ObjectMeta.Labels = desired.ObjectMeta.Labels
-	return r.buildClient.Update(existing)
+	return r.buildClient.Builds(desired.Namespace).Create(desired)
 }
 
 func (r *Reconciler) updateStatus(namespace string, desired *v1alpha1.Source) (*v1alpha1.Source, error) {

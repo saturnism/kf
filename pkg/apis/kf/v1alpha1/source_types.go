@@ -83,6 +83,10 @@ type AppSpecSourceBuildpackBuild struct {
 type SourceStatus struct {
 	// Pull in the fields from Knative's duckv1beta1 status field.
 	duckv1beta1.Status `json:",inline"`
+
+	// Image is the latest successfully built image.
+	// +optional
+	Image string `json:"image,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

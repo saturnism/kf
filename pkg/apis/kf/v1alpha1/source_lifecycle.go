@@ -66,6 +66,11 @@ func (status *SourceStatus) MarkBuildNotOwned(name string) {
 // PropagateBuildStatus copies fields from the Build status to Space
 // and updates the readiness based on the current phase.
 func (status *SourceStatus) PropagateBuildStatus(build *v1alpha1.Build) {
+
+	if build == nil {
+		return
+	}
+
 	for _, condition := range build.Status.GetConditions() {
 
 		c := apis.Condition{
@@ -78,6 +83,10 @@ func (status *SourceStatus) PropagateBuildStatus(build *v1alpha1.Build) {
 		}
 
 		status.manage().SetCondition(c)
+
+		if condition.Type == "Succeeded" && condition.Status == "True" {
+			status.Image = build.Spec.Template.Arguments[0].Value
+		}
 	}
 }
 
