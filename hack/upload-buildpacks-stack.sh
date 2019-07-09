@@ -21,7 +21,7 @@ publish=${PUBLISH:-false}
 
 rootpath=$(cd $(dirname $0)/.. && pwd)
 dir=${rootpath}/samples/buildpacks/stacks/bionic
-gcr=gcr.io/$(gcloud config get-value project)
+gcr=${KF_REGISTRY:-gcr.io/$(gcloud config get-value project)}
 
 base_image=${gcr}/base:${version}
 run_image=${gcr}/run:${version}

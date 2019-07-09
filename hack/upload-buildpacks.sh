@@ -21,9 +21,9 @@ scriptpath=$(cd $(dirname $0)/.. && pwd)
 # Upload stacks
 PUBLISH=true $scriptpath/hack/upload-buildpacks-stack.sh
 
-samples=$(realpath $scriptpath/samples)
+samples=$scriptpath/samples
 builder_config=$samples/buildpacks/builder/builder.toml
-gcr="gcr.io/$(gcloud config get-value project)"
+gcr=${KF_REGISTRY:-gcr.io/$(gcloud config get-value project)}
 builder_image="$gcr/buildpack-builder-$RANDOM"
 
 # Create a temp directory so we can manipulate the builder.toml. We can't

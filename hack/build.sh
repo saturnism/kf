@@ -14,7 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+GO111MODULE=on
+GOPROXY=https://proxy.golang.org
+GOSUMDB=sum.golang.org
+
 set -eux
-cd $(realpath $(dirname "$(realpath $0)")/..)
+pushd $(dirname $0)/..
 mkdir -p bin
+
 go build -o bin/kf ./cmd/kf/...
+popd
